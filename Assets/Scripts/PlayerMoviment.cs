@@ -12,15 +12,17 @@ public class PlayerMoviment : MonoBehaviour
     private Animator _animator;
 
     private const float MoveSpeed = 7.0f;
-    private const float JumpForce = 14f;
+    private const float JumpForce = 9f;
     private bool _isDoubleJumpEnable;
-
+    [SerializeField] private Sprite _sprite;
     private static readonly Dictionary<int, string> States = new() {
         {1, "Player_Idle"},
         {2, "Player_Running"},
         {3, "Player_Jump"},
         {4, "Player_Falling"}
     };
+
+    private string _powerUp = "Normal";
 
     private bool _isGrounded;
 
@@ -40,17 +42,14 @@ public class PlayerMoviment : MonoBehaviour
     // Update is called once per frame
     private void Update()
     {
-
-        if (_isGrounded)
-        {
-            _isDoubleJumpEnable = false;
-        }
         var dirX = Input.GetAxisRaw("Horizontal");
         _rb.velocity = new Vector2(dirX * MoveSpeed, _rb.velocity.y);
-        if ((_isGrounded || _isDoubleJumpEnable) && Input.GetButtonDown("Jump"))
+        if ((_isGrounded || (_isDoubleJumpEnable && _animator
+                .GetCurrentAnimatorStateInfo(0).IsTag("Falling"))) 
+            && Input.GetButtonDown("Jump"))
         {
             _rb.velocity = new Vector2(_rb.velocity.x, 
-                _isDoubleJumpEnable ? JumpForce*.5f : JumpForce);
+                _isDoubleJumpEnable ? JumpForce*.75f : JumpForce);
             
             _isDoubleJumpEnable = !_isDoubleJumpEnable;
         }
@@ -83,17 +82,20 @@ public class PlayerMoviment : MonoBehaviour
             movementState = States[4];
         }
 
-        _animator.Play(movementState);
+        _animator.Play(_powerUp.Equals("Normal") ? movementState 
+            : movementState+"_"+_powerUp);
     }
 
-    //private void OnCollisionEnter2D(Collision2D collision)
-    //{
-    //    Debug.Log("Collided with " + collision.gameObject.name);
-    //}
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject.name.Equals("Terrain"))
+        {
+            _isDoubleJumpEnable = false;
+        }
+    }
 
     private void FixedUpdate()
     {
-        
         _isGrounded = IsHabilToJump();
     }
 
@@ -104,5 +106,20 @@ public class PlayerMoviment : MonoBehaviour
             0f, 
             Vector2.down, 
             0.1f, _groundLayerMask);
+    }
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (!collision.gameObject.CompareTag("Cherry"))
+        {
+            return;
+        }
+
+        if (!_powerUp.Equals("Mask"))
+        {
+            _powerUp = "Mask";
+            _animator.Play("Player_Transform_Mask");
+            new WaitForSeconds(10f);
+        }
     }
 }
